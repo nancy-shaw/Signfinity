@@ -14,6 +14,7 @@ from pathlib import Path
 from flask import Flask, Response, jsonify, render_template, request, send_file
 from werkzeug.exceptions import RequestEntityTooLarge
 
+from advisor import get_suggestions
 from report import run_report
 
 
@@ -104,6 +105,28 @@ def _render_card(report, metadata):
     generated_at = escape(metadata["generated_at"])
     message = escape(str(status_detail))
 
+    improvement_section = ""
+    suggestions = metadata.get("suggestions")
+    if suggestions:
+        suggestion_rows = []
+        for suggestion in suggestions["suggestions"]:
+            suggestion_rows.append(
+                "<article class=\"suggestion\">"
+                f"<p><strong>{escape(suggestion['priority'].title())}</strong></p>"
+                f"<h3>{escape(suggestion['title'])}</h3>"
+                f"<p><strong>Evidence:</strong> {escape(suggestion['evidence'])}</p>"
+                f"<p><strong>What to change:</strong> {escape(suggestion['what_to_change'])}</p>"
+                f"<p><strong>Expected effect:</strong> {escape(suggestion['expected_effect'])}</p>"
+                "</article>"
+            )
+        caveat_list = "".join(f"<li>{escape(caveat)}</li>" for caveat in suggestions["caveats"])
+        improvement_section = (
+            "<h2>Improvement suggestions</h2>"
+            f"<p>{escape(suggestions['summary'])}</p>"
+            f"{''.join(suggestion_rows)}"
+            f"<ul>{caveat_list}</ul>"
+        )
+
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -128,6 +151,8 @@ table {{ width: 100%; border-collapse: collapse; }}
 th, td {{ padding: 10px 11px; border-bottom: 1px solid #e7eeea; text-align: left; }}
 th {{ color: #586963; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }}
 .note {{ padding: 14px 16px; border-left: 4px solid #39866a; background: #f1f6f3; line-height: 1.55; }}
+.suggestion {{ margin: 14px 0; padding: 14px 16px; border: 1px solid #dce5e0; border-radius: 10px; break-inside: avoid; }}
+.suggestion h3 {{ margin: 6px 0; }}
 @media (max-width: 650px) {{ main {{ padding: 22px; }} .metrics {{ grid-template-columns: 1fr 1fr; }} .meta {{ grid-template-columns: 1fr; }} }}
 @media print {{
   @page {{ margin: 14mm; }}
@@ -159,6 +184,7 @@ th {{ color: #586963; font-size: .78rem; text-transform: uppercase; letter-spaci
 <tbody>{''.join(class_rows)}</tbody></table>
 <h2>How to read this</h2>
 <p class="note">Higher accuracy means more samples were classified correctly. Compare each perturbation with the clean baseline; a larger drop means greater sensitivity. Per-class results are less reliable when a sign has few examples.</p>
+{improvement_section}
 <h2>Limitations</h2>
 <p>{sample_note} Only {perturbation_count} perturbations are tested. Results apply only to the uploaded model and data.</p>
 </main></body></html>"""
@@ -258,6 +284,38 @@ def download_card(report_id):
         as_attachment=True,
         download_name="robustness_card.html",
     )
+
+
+@app.post("/advise")
+def advise():
+    """Generate suggestions from a server-stored report, not browser metrics."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object."}), 400
+    report_id = data.get("report_id")
+    model_description = data.get("model_description", "")
+    if not isinstance(report_id, str):
+        return jsonify({"error": "report_id must be a string."}), 400
+    if not isinstance(model_description, str):
+        return jsonify({"error": "model_description must be a string."}), 400
+    if len(model_description) > 3000:
+        return jsonify({"error": "model_description must be 3000 characters or fewer."}), 400
+
+    with CARD_RESULTS_LOCK:
+        stored_report = CARD_RESULTS.get(report_id)
+        result = stored_report["result"] if stored_report is not None else None
+    if result is None:
+        return jsonify({"error": "Unknown report_id."}), 404
+
+    suggestions = get_suggestions(result, model_description)
+    if "error" in suggestions:
+        return jsonify({"error": suggestions["error"]}), 502
+    with CARD_RESULTS_LOCK:
+        current_report = CARD_RESULTS.get(report_id)
+        if current_report is None:
+            return jsonify({"error": "Unknown report_id."}), 404
+        current_report["suggestions"] = suggestions
+    return jsonify(suggestions)
 
 
 if __name__ == "__main__":

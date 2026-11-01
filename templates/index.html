@@ -74,6 +74,17 @@
           </table>
         </div>
       </section>
+      <section class="panel" aria-labelledby="advisor-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">Optional AI review</p><h2 id="advisor-title">Improvement Advisor</h2></div>
+        </div>
+        <label for="model-description">Describe your model and hyperparameters</label>
+        <textarea id="model-description" maxlength="3000" rows="4" placeholder="Describe the architecture, training setup, or constraints for the reviewer."></textarea>
+        <button id="advisor-button" class="primary-button" type="button" disabled>Get improvement suggestions</button>
+        <p id="advisor-loading" class="loading" role="status" hidden>Reviewing the report…</p>
+        <div id="advisor-error" class="notice error-notice" role="alert" hidden></div>
+        <div id="advisor-results" class="advisor-results" aria-live="polite"></div>
+      </section>
       <a id="download-card" class="primary-button disabled" href="#" role="button" aria-disabled="true" tabindex="-1">Download Robustness Card</a>
     </section>
   </main>
