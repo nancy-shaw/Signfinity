@@ -124,6 +124,7 @@ function renderReport(data) {
   renderPerturbations(data);
   renderClasses(data);
   reportId = data.report_id;
+  if (reportId) sessionStorage.setItem("report_id", reportId);
   advisorButton.disabled = !reportId;
   advisorResults.replaceChildren();
   advisorError.hidden = true;

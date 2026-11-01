@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Landmark Graph — Sign Model Report Card{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">{% endblock %}
+{% block content %}
+<main class="page-shell landmarks-page">
+  <header class="page-header"><p class="eyebrow">SEQUENCE INSPECTION / 03</p><h1>Landmark <span class="gradient-text">Graph</span></h1><p class="intro">Explore an animated two-hand skeleton using the existing project visualization.</p></header>
+  <section class="panel upload-panel"><h2>Load a sequence</h2><p class="panel-copy">Upload one sequence with shape (30, 126), or a batch with shape (N, 30, 126). For a batch, choose a sample index to display.</p><form method="post" enctype="multipart/form-data" class="landmark-form"><label>Landmark data <span>.npy</span><input type="file" name="landmarks" accept=".npy" required></label><label>Sample index <span>used for a batch</span><input type="number" name="sample_index" min="0" value="0"></label><button class="button button-primary" type="submit">Show landmark graph <span aria-hidden="true">↗</span></button></form>{% if error %}<div class="notice error-notice" role="alert">{{ error }}</div>{% endif %}</section>
+  {% if graph_html %}<section class="panel graph-panel"><div class="section-heading"><div><p class="eyebrow">EXISTING VIZ.PY GRAPH</p><h2>Animated hand landmarks</h2></div><p>Use the controls to move through the sequence.</p></div><div class="plot-frame">{{ graph_html|safe }}</div></section>{% endif %}
+</main>
+{% endblock %}

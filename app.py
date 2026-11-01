@@ -11,11 +11,13 @@ from html import escape
 from io import BytesIO
 from pathlib import Path
 
+import numpy as np
 from flask import Flask, Response, jsonify, render_template, request, send_file
 from werkzeug.exceptions import RequestEntityTooLarge
 
 from advisor import get_suggestions
 from report import run_report
+from viz import skeleton_figure
 
 
 app = Flask(__name__)
@@ -192,8 +194,58 @@ th {{ color: #586963; font-size: .78rem; text-transform: uppercase; letter-spaci
 
 @app.get("/")
 def index():
-    """Serve the report upload page."""
+    """Serve the project home page."""
+    return render_template("home.html")
+
+
+@app.get("/robustness")
+def robustness():
+    """Serve the existing report upload and results page."""
     return render_template("index.html")
+
+
+@app.get("/advisor")
+def advisor_page():
+    """Serve the report based improvement advisor page."""
+    return render_template("advisor.html")
+
+
+@app.route("/landmarks", methods=["GET", "POST"])
+def landmarks():
+    """Render the existing animated Plotly skeleton for uploaded landmarks."""
+    graph_html = None
+    error = None
+    if request.method == "POST":
+        upload = request.files.get("landmarks")
+        if upload is None or not upload.filename:
+            error = "Choose a NumPy landmark sequence first."
+        elif Path(upload.filename).suffix.lower() != ".npy":
+            error = "Landmark Graph accepts a .npy file."
+        else:
+            try:
+                values = np.load(upload.stream, allow_pickle=False)
+                if values.ndim == 3:
+                    sample_index = int(request.form.get("sample_index", "0"))
+                    if sample_index < 0 or sample_index >= len(values):
+                        raise ValueError("Sample index is outside the uploaded array.")
+                    sequence = values[sample_index]
+                else:
+                    sequence = values
+                figure = skeleton_figure(sequence, "Landmark Graph")
+                figure.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    font={"color": "#e9e8f5"},
+                )
+                graph_html = figure.to_html(
+                    full_html=False,
+                    include_plotlyjs="cdn",
+                    config={"responsive": True, "displaylogo": False},
+                )
+            except Exception as exc:
+                error = str(exc)
+    return render_template("landmarks.html", graph_html=graph_html, error=error)
 
 
 @app.errorhandler(RequestEntityTooLarge)
@@ -284,6 +336,16 @@ def download_card(report_id):
         as_attachment=True,
         download_name="robustness_card.html",
     )
+
+
+@app.get("/report/<report_id>")
+def get_stored_report(report_id):
+    """Return the report stored on the server for a live report id."""
+    with CARD_RESULTS_LOCK:
+        stored_report = CARD_RESULTS.get(report_id)
+    if stored_report is None:
+        return jsonify({"error": "Unknown report_id."}), 404
+    return jsonify(stored_report["result"])
 
 
 @app.post("/advise")

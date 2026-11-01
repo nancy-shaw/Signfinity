@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Signfinity — Sign Model Report Card{% endblock %}
+{% block content %}
+<main class="home-page">
+  <section class="home-hero">
+    <div class="hero-copy">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> ISL MODEL ROBUSTNESS</p>
+      <h1>Make every sign<br>model <span class="gradient-text">more reliable.</span></h1>
+      <p class="hero-description">Stress-test landmark-based sign language models, inspect the weak spots, and turn evidence into practical next steps.</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="{{ url_for('robustness') }}">Run a robustness test <span aria-hidden="true">↗</span></a>
+        <a class="button button-quiet" href="#features">Explore features <span aria-hidden="true">↓</span></a>
+      </div>
+      <p class="hero-footnote"><span class="mono-mark">01</span> Built for landmark-based sign models</p>
+    </div>
+    <div class="hero-art" aria-label="Decorative hand landmark artwork">
+      <img src="{{ url_for('static', filename='image.png') }}" alt="Abstract glowing hand landmark illustration">
+      <div class="art-caption"><span class="status-dot"></span> LANDMARK SPACE <span class="art-caption-line"></span> ISL</div>
+    </div>
+    <div class="hero-orb hero-orb-one"></div><div class="hero-orb hero-orb-two"></div>
+  </section>
+  <section class="feature-section section-wrap" id="features">
+    <div class="section-title-row"><div><p class="eyebrow">THREE WAYS TO WORK</p><h2>A clearer view of model quality.</h2></div><p class="section-aside">One focused workspace, from stress test to next step.</p></div>
+    <div class="feature-grid">
+      <a class="feature-card" href="{{ url_for('robustness') }}"><span class="feature-index">FEATURE 01</span><span class="feature-icon icon-purple" aria-hidden="true">⌁</span><h3>Robustness Test</h3><p>Upload a model and test data, stress-test it with six perturbations, and download a Robustness Card.</p><span class="feature-link">Open feature <span aria-hidden="true">↗</span></span></a>
+      <a class="feature-card" href="{{ url_for('advisor_page') }}"><span class="feature-index">FEATURE 02</span><span class="feature-icon icon-blue" aria-hidden="true">✳</span><h3>AI Advisor</h3><p>Get suggestions to improve your model, based on its robustness report.</p><span class="feature-link">Open feature <span aria-hidden="true">↗</span></span></a>
+      <a class="feature-card" href="{{ url_for('landmarks') }}"><span class="feature-index">FEATURE 03</span><span class="feature-icon icon-pink" aria-hidden="true">⟡</span><h3>Landmark Graph</h3><p>Explore an animated two-hand landmark sequence with the project’s existing visualization.</p><span class="feature-link">Open feature <span aria-hidden="true">↗</span></span></a>
+    </div>
+  </section>
+  <section class="workflow-section section-wrap">
+    <div class="workflow-heading"><p class="eyebrow">A SIMPLE WORKFLOW</p><h2>From upload to action.</h2></div>
+    <div class="workflow-grid">
+      <article class="workflow-step"><span>01</span><h3>Upload</h3><p>Choose the model and its matching test arrays.</p></article>
+      <article class="workflow-step"><span>02</span><h3>Stress test</h3><p>Run the clean baseline and six controlled perturbations.</p></article>
+      <article class="workflow-step"><span>03</span><h3>Diagnose</h3><p>Review accuracy changes and the weakest classes.</p></article>
+      <article class="workflow-step"><span>04</span><h3>Get suggestions</h3><p>Ask the advisor for evidence-based ideas to investigate.</p></article>
+    </div>
+  </section>
+  <section class="home-cta section-wrap"><div><p class="eyebrow">START WITH YOUR TEST SET</p><h2>See how your model responds to change.</h2></div><a class="button button-primary" href="{{ url_for('robustness') }}">Open Robustness Test <span aria-hidden="true">↗</span></a></section>
+</main>
+{% endblock %}
