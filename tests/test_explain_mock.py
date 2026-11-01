@@ -13,7 +13,7 @@ from explain_mock import (
 )
 
 try:
-    from explain import frame_importance
+    from explain import frame_importance, joint_group_importance
 except ImportError:
     def frame_importance(predict_proba, x, class_id):
         """Calculate frame drops for this isolated mock test if explain.py is absent."""
@@ -123,16 +123,19 @@ def test_page_chart_builders_serialize_heatmap_and_both_bar_figures():
 
 
 def test_mock_frame_importance_peaks_in_frames_eight_through_twelve():
-    """The mock predictor's right-index class cue is concentrated at frame ten."""
+    """Predicted-class importance is positive for its frame and right-index cues."""
     X, y = make_mock_data(n=2, n_classes=5, seed=7)
-    sample = X[1]
-    class_id = int(y[1])
+    sample = X[0]
     predict_proba = lambda batch: fake_predict_proba(batch, n_classes=5)
     probabilities = predict_proba(sample[None, :, :])[0]
+    class_id = int(np.argmax(probabilities))
+    assert class_id != int(y[0])
     drops = frame_importance(predict_proba, sample, class_id)
-    assert int(np.argmax(probabilities)) == class_id
+    group_drops = joint_group_importance(predict_proba, sample, class_id)
     assert drops.shape == (30,)
     assert 8 <= int(np.argmax(drops)) <= 12
     assert float(np.max(drops)) > 0.05
+    assert max(group_drops, key=group_drops.get) == ("right", "index")
+    assert group_drops[("right", "index")] > 0.05
     assert 0.55 <= float(np.max(probabilities)) <= 0.85
     assert np.sort(probabilities)[-2] > 0.05
