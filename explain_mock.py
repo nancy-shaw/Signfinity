@@ -3,6 +3,7 @@
 from collections import OrderedDict
 
 import numpy as np
+import plotly.graph_objects as go
 
 
 _TEMPLATE = np.array([
@@ -75,6 +76,82 @@ def build_error_matrix(counts, words, max_classes=15):
     matrix = counts[np.ix_(class_ids, class_ids)].astype(float)
     np.fill_diagonal(matrix, np.nan)
     return labels, matrix
+
+
+def build_error_heatmap(matrix, labels):
+    """Build a serializable square error heatmap with a muted diagonal."""
+    matrix = np.asarray(matrix, dtype=float)
+    text = np.full(matrix.shape, "", dtype=object)
+    for row, col in zip(*np.nonzero(np.isfinite(matrix) & (matrix > 0))):
+        text[row, col] = str(int(matrix[row, col]))
+    zmax = max(1, int(np.nanmax(matrix)))
+    errors = go.Heatmap(
+        z=matrix,
+        x=labels,
+        y=labels,
+        text=text,
+        texttemplate="%{text}",
+        zmin=0,
+        zmax=zmax,
+        colorscale=[[0, "white"], [1, "red"]],
+        colorbar={"title": "Errors"},
+        hovertemplate="True: %{y} / Predicted: %{x} / Count: %{z}",
+    )
+    diagonal = np.full(matrix.shape, np.nan)
+    np.fill_diagonal(diagonal, 1.0)
+    diagonal_trace = go.Heatmap(
+        z=diagonal,
+        x=labels,
+        y=labels,
+        zmin=0,
+        zmax=1,
+        colorscale=[[0, "#e5e7eb"], [1, "#e5e7eb"]],
+        showscale=False,
+        hoverinfo="skip",
+        hoverongaps=False,
+    )
+    figure = go.Figure([errors, diagonal_trace])
+    figure.update_layout(
+        title="Most confused signs (errors only)",
+        height=520,
+        margin={"t": 65, "b": 185, "l": 160, "r": 35},
+        xaxis={"title": "Predicted sign", "tickangle": 45, "automargin": True},
+        yaxis={
+            "title": "True sign (actual)",
+            "autorange": "reversed",
+            "scaleanchor": "x",
+            "scaleratio": 1,
+            "automargin": True,
+        },
+    )
+    return figure
+
+
+def build_importance_bar(values, labels, title, x_title):
+    """Build a signed probability-drop bar chart, or None for negligible values."""
+    values = np.asarray(values, dtype=float)
+    if not values.size or not np.isfinite(values).any() or np.nanmax(np.abs(values)) < 1e-6:
+        return None
+    finite_values = np.nan_to_num(values, nan=0.0)
+    low = min(0.0, float(finite_values.min()))
+    high = max(0.0, float(finite_values.max()))
+    padding = max(high - low, 1e-6) * 0.12
+    colors = ["#2864dc" if value >= 0 else "#ed8b23" for value in finite_values]
+    figure = go.Figure(go.Bar(x=labels, y=finite_values, marker_color=colors))
+    figure.update_layout(
+        title=title,
+        height=340,
+        showlegend=False,
+        xaxis_title=x_title,
+        yaxis_title="Drop in probability",
+        yaxis={
+            "range": [low - padding, high + padding],
+            "zeroline": True,
+            "zerolinecolor": "#333333",
+            "zerolinewidth": 1,
+        },
+    )
+    return figure
 
 
 def fake_predict_proba(X, n_classes=10):

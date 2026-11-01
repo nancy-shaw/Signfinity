@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+from explain_mock import make_mock_data
 from viz import side_by_side_figure, skeleton_figure
 
 
@@ -126,3 +127,13 @@ def test_both_public_functions_leave_inputs_unchanged():
     side_by_side_figure(original, stressed, ("Original", "Stressed"))
     np.testing.assert_array_equal(original, original_copy)
     np.testing.assert_array_equal(stressed, stressed_copy)
+
+
+def test_realistic_replay_figures_serialize_to_dict_and_json():
+    """Hand-shaped replay figures serialize without invalid Plotly properties."""
+    samples, _ = make_mock_data(n=2, n_classes=3, seed=19)
+    skeleton = skeleton_figure(samples[0], "Single sample")
+    comparison = side_by_side_figure(samples[0], samples[1], ("Original", "Stressed"))
+    for figure in (skeleton, comparison):
+        assert figure.to_dict()
+        assert figure.to_json()

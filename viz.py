@@ -218,11 +218,18 @@ def _animated_figure(sequences, offsets, title, joint_values=None, half_titles=N
             }],
             sliders=[{
                 "active": 0,
-                "y": -0.04,
+                "y": -0.03,
+                "bgcolor": "#e5e7eb",
+                "bordercolor": "#cbd5e1",
+                "borderwidth": 0,
+                "font": {"size": 9, "color": "#64748b"},
+                "tickcolor": "#94a3b8",
+                "ticklen": 2,
+                "tickwidth": 1,
                 "steps": steps,
                 "currentvalue": {"prefix": "Frame "},
             }],
-            margin={"t": 135, "b": 155, "l": 30, "r": 30},
+            margin={"t": 135, "b": 175, "l": 30, "r": 30},
         ),
     )
 

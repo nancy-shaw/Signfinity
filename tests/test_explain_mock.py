@@ -3,7 +3,9 @@
 import numpy as np
 
 from explain_mock import (
+    build_error_heatmap,
     build_error_matrix,
+    build_importance_bar,
     fake_predict_proba,
     make_mock_data,
     make_mock_words,
@@ -100,6 +102,24 @@ def test_build_error_matrix_returns_empty_square_for_no_errors():
     labels, matrix = build_error_matrix(counts, make_mock_words(3))
     assert labels == []
     assert matrix.shape == (0, 0)
+
+
+def test_page_chart_builders_serialize_heatmap_and_both_bar_figures():
+    """Heatmap, frame, and finger-group Plotly charts serialize successfully."""
+    counts = np.zeros((4, 4), dtype=int)
+    counts[0, 1] = 4
+    counts[1, 2] = 2
+    labels, matrix = build_error_matrix(counts, make_mock_words(4))
+    heatmap = build_error_heatmap(matrix, labels)
+    frame_chart = build_importance_bar([0.1, -0.04, 0.02], [8, 9, 10], "Frames", "Frame")
+    finger_chart = build_importance_bar([0.08, -0.02], ["Left thumb", "Right index"], "Groups", "Finger group")
+    for figure in (heatmap, frame_chart, finger_chart):
+        assert figure.to_dict()
+        assert figure.to_json()
+    assert heatmap.layout.yaxis.autorange == "reversed"
+    assert heatmap.layout.yaxis.scaleanchor == "x"
+    assert frame_chart.data[0].marker.color[0] != frame_chart.data[0].marker.color[1]
+    assert frame_chart.layout.yaxis.zeroline is True
 
 
 def test_mock_frame_importance_peaks_in_frames_eight_through_twelve():
