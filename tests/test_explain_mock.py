@@ -44,6 +44,10 @@ def test_mock_words_and_fake_probabilities_have_expected_shapes():
     assert probabilities.shape == (8, 5)
     np.testing.assert_allclose(probabilities.sum(axis=1), 1.0)
     assert np.mean(probabilities.argmax(axis=1) == np.arange(8) % 5) >= 0.75
+    top_probabilities = probabilities.max(axis=1)
+    second_probabilities = np.sort(probabilities, axis=1)[:, -2]
+    assert np.all((top_probabilities >= 0.55) & (top_probabilities <= 0.85))
+    assert np.all(second_probabilities > 0.05)
 
 
 def test_mock_generation_and_predictions_are_deterministic_and_input_sensitive():
@@ -82,7 +86,7 @@ def test_build_error_matrix_uses_both_ids_and_blanks_diagonal():
     counts[4, 5] = 2
     words = make_mock_words(6)
     labels, matrix = build_error_matrix(counts, words, max_classes=15)
-    assert labels == ["sign_1", "sign_0", "sign_2", "sign_4", "sign_5"]
+    assert labels == ["sign_0", "sign_1", "sign_2", "sign_4", "sign_5"]
     assert matrix.shape == (len(labels), len(labels))
     assert np.all(np.isnan(np.diag(matrix)))
     positions = {label: index for index, label in enumerate(labels)}
@@ -103,9 +107,12 @@ def test_mock_frame_importance_peaks_in_frames_eight_through_twelve():
     X, y = make_mock_data(n=2, n_classes=5, seed=7)
     sample = X[1]
     class_id = int(y[1])
-    drops = frame_importance(
-        lambda batch: fake_predict_proba(batch, n_classes=5), sample, class_id
-    )
+    predict_proba = lambda batch: fake_predict_proba(batch, n_classes=5)
+    probabilities = predict_proba(sample[None, :, :])[0]
+    drops = frame_importance(predict_proba, sample, class_id)
+    assert int(np.argmax(probabilities)) == class_id
     assert drops.shape == (30,)
     assert 8 <= int(np.argmax(drops)) <= 12
-    assert float(np.max(drops)) > 0.01
+    assert float(np.max(drops)) > 0.05
+    assert 0.55 <= float(np.max(probabilities)) <= 0.85
+    assert np.sort(probabilities)[-2] > 0.05

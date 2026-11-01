@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from explain_mock import build_error_matrix, fake_predict_proba, make_mock_data, make_mock_words, mock_tests
-from viz import side_by_side_figure
+from viz import side_by_side_figure, skeleton_figure
 
 
 def _fallback_confusion_counts(y_true, y_pred, n_classes):
@@ -53,20 +53,17 @@ def _fallback_top_classes(counts, k=15):
 
 
 try:
+    import explain
+except Exception:
+    explain = None
+
+try:
     from explain import confusion_counts, new_errors, top_confused_classes, top_confused_pairs
 except Exception:
     confusion_counts = _fallback_confusion_counts
     new_errors = _fallback_new_errors
     top_confused_classes = _fallback_top_classes
     top_confused_pairs = _fallback_top_pairs
-
-try:
-    from explain import frame_importance, joint_group_importance, wrong_prediction_report
-except Exception:
-    frame_importance = None
-    joint_group_importance = None
-    wrong_prediction_report = None
-
 
 @st.cache_data(show_spinner=False)
 def _cached_mock_data(n, n_classes, seed):
@@ -137,7 +134,20 @@ def _error_heatmap(matrix, labels):
         colorbar={"title": "Errors"},
         hovertemplate="True: %{y} / Predicted: %{x} / Count: %{z}",
     )
-    figure = go.Figure(chart)
+    diagonal = np.full(matrix.shape, np.nan)
+    np.fill_diagonal(diagonal, 1.0)
+    diagonal_chart = go.Heatmap(
+        z=diagonal,
+        x=labels,
+        y=labels,
+        zmin=0,
+        zmax=1,
+        colorscale=[[0, "#e5e7eb"], [1, "#e5e7eb"]],
+        showscale=False,
+        hoverinfo="skip",
+        hoverongaps=False,
+    )
+    figure = go.Figure([chart, diagonal_chart])
     figure.update_layout(
         title="Most confused signs (errors only)",
         height=520,
@@ -298,7 +308,7 @@ try:
             st.dataframe(pairs, hide_index=True, width="stretch")
             labels, matrix = build_error_matrix(counts, words, max_classes=15)
             if labels:
-                st.plotly_chart(_error_heatmap(matrix, labels), width="stretch")
+                st.plotly_chart(_error_heatmap(matrix, labels), use_container_width=True)
                 st.caption("Shows only mistakes between the most confused signs. Each class has about 3 test samples, so counts are small.")
 except Exception as error:
     st.error(f"What breaks analysis failed: {error}")
@@ -345,33 +355,49 @@ try:
                 format_func=lambda value: labels[int(value)],
                 key="explain_sample_id",
             )
-            skeleton_figure = side_by_side_figure(X[sample_id], variants[selected_test][sample_id], ("Original", selected_test))
-            skeleton_figure.update_layout(height=420)
-            st.plotly_chart(skeleton_figure, width="stretch")
-            if callable(wrong_prediction_report):
-                report = wrong_prediction_report(predict_fn, variants[selected_test][sample_id], int(y[sample_id]))
+            if selected_test == "Original":
+                replay = skeleton_figure(X[sample_id], "Original sequence")
+            else:
+                replay = side_by_side_figure(X[sample_id], variants[selected_test][sample_id], ("Original", selected_test))
+            replay.update_layout(height=480)
+            if replay.layout.sliders:
+                replay.layout.sliders[0].thickness = 4
+                replay.layout.sliders[0].bgcolor = "#e5e7eb"
+                replay.layout.sliders[0].activebgcolor = "#94a3b8"
+                replay.layout.sliders[0].borderwidth = 0
+            st.plotly_chart(replay, width="stretch")
+            if explain is not None and callable(getattr(explain, "wrong_prediction_report", None)):
+                report = explain.wrong_prediction_report(predict_fn, variants[selected_test][sample_id], int(y[sample_id]))
                 st.caption(f"Predicted {_word(words, report['pred_id'])}: {report['p_pred']:.3f}; true-class probability: {report['p_true']:.3f}")
-            if callable(frame_importance):
-                selected_prob_fn = lambda batch: _probability_matrix(predict_fn, batch, n_classes)
+            has_importance = (
+                explain is not None
+                and callable(getattr(explain, "frame_importance", None))
+                and callable(getattr(explain, "joint_group_importance", None))
+            )
+            if not has_importance:
+                st.warning("Importance functions missing: merge branch f3/explain")
+            else:
                 pred_id = int(predictions[selected_test][sample_id])
-                frame_values = frame_importance(selected_prob_fn, variants[selected_test][sample_id], pred_id)
-                frame_chart = _signed_bar_figure(frame_values, list(range(30)), "Frame importance for predicted class", "Frame")
-                if frame_chart is None:
+                stressed_sample = variants[selected_test][sample_id]
+                frame_values = explain.frame_importance(predict_fn, stressed_sample, pred_id)
+                group_values = explain.joint_group_importance(predict_fn, stressed_sample, pred_id)
+                frame_values = np.asarray(frame_values, dtype=float)
+                group_array = np.asarray(list(group_values.values()), dtype=float)
+                if (
+                    frame_values.size
+                    and group_array.size
+                    and np.max(np.abs(frame_values)) < 1e-6
+                    and np.max(np.abs(group_array)) < 1e-6
+                ):
                     st.info("This sample shows no measurable importance.")
                 else:
-                    st.plotly_chart(frame_chart, width="stretch")
-            else:
-                st.info("Frame importance is unavailable because explain.frame_importance is not present.")
-            if callable(joint_group_importance):
-                group_values = joint_group_importance(selected_prob_fn, variants[selected_test][sample_id], pred_id)
-                group_names = [f"{hand.title()} {finger}" for hand, finger in group_values]
-                group_chart = _signed_bar_figure(list(group_values.values()), group_names, "Finger-group importance for predicted class", "Finger group")
-                if group_chart is None:
-                    st.info("This sample shows no measurable importance.")
-                else:
-                    st.plotly_chart(group_chart, width="stretch")
-            else:
-                st.info("Finger-group importance is unavailable because explain.joint_group_importance is not present.")
+                    frame_chart = _signed_bar_figure(frame_values, list(range(30)), "Frame importance for predicted class", "Frame")
+                    if frame_chart is not None:
+                        st.plotly_chart(frame_chart, width="stretch")
+                    group_names = [f"{hand.title()} {finger}" for hand, finger in group_values]
+                    group_chart = _signed_bar_figure(group_array, group_names, "Finger-group importance for predicted class", "Finger group")
+                    if group_chart is not None:
+                        st.plotly_chart(group_chart, width="stretch")
 except Exception as error:
     st.error(f"Sample inspection failed: {error}")
 

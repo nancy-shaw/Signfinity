@@ -70,7 +70,7 @@ def build_error_matrix(counts, words, max_classes=15):
     if not involved or max_classes <= 0:
         return [], np.empty((0, 0), dtype=float)
     error_mass = errors.sum(axis=0) + errors.sum(axis=1)
-    class_ids = sorted(involved, key=lambda class_id: (-int(error_mass[class_id]), class_id))[:max_classes]
+    class_ids = sorted(sorted(involved, key=lambda class_id: (-int(error_mass[class_id]), class_id))[:max_classes])
     labels = [words[class_id] for class_id in class_ids]
     matrix = counts[np.ix_(class_ids, class_ids)].astype(float)
     np.fill_diagonal(matrix, np.nan)
@@ -88,13 +88,11 @@ def fake_predict_proba(X, n_classes=10):
     frame_signal = values[:, 8:13, index_z_features].mean(axis=2)
     class_signal = frame_signal @ _FRAME_WEIGHTS
     centers = _INDEX_BASE + 0.69 * ((0.06 + 0.01 * np.arange(n_classes)) - _INDEX_BASE)
-    logits = -2.0 * ((class_signal[:, None] - centers[None, :]) / 0.01) ** 2
-    predicted = logits.argmax(axis=1)
+    temperature = 2.0
+    logits = -temperature * ((class_signal[:, None] - centers[None, :]) / 0.01) ** 2
     error_marker = values[:, :, 14].mean(axis=1) > 0.055
     for sample_id in np.flatnonzero(error_marker):
-        wrong_id = int((predicted[sample_id] + 1) % n_classes)
-        logits[sample_id] = -8.0
-        logits[sample_id, wrong_id] = 8.0
+        logits[sample_id] = np.roll(logits[sample_id], 1)
     logits -= logits.max(axis=1, keepdims=True)
     exp_logits = np.exp(logits)
     return exp_logits / exp_logits.sum(axis=1, keepdims=True)
