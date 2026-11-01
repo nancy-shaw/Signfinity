@@ -86,3 +86,10 @@ pip install -r requirements.txt / pytest -q / streamlit run app.py
 
 The code runs, pytest passes, the acceptance command in the task passes, and
 the diff is small and readable.
+
+## Feature 03: Explainability (owner: F3)
+Files: explain.py, viz.py, explain_mock.py, pages/3_Explain.py, tests/test_explain.py, tests/test_viz.py.
+- Works on landmark arrays only (no video, no body landmarks). The skeleton replay is drawn from the 42 hand joints.
+- Data is wrist-relative: each hand is centered on its own wrist. When drawing, offset the left and right hand horizontally. Never claim hand-to-hand distance is real.
+- Importance = drop in model probability when a frame or finger group is neutralized (neighbor interpolation for frames, time-average for finger groups). Never replace with zeros, because zeros mean the hand was not detected. This is a hint, not proof of cause, and the UI must say so.
+- explain.py functions take a predict_proba(X) callable that returns (N, 129) probabilities. No AI calls.
