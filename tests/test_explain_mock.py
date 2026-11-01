@@ -2,7 +2,26 @@
 
 import numpy as np
 
-from explain_mock import fake_predict_proba, make_mock_data, make_mock_words, mock_tests
+from explain_mock import (
+    build_error_matrix,
+    fake_predict_proba,
+    make_mock_data,
+    make_mock_words,
+    mock_tests,
+)
+
+try:
+    from explain import frame_importance
+except ImportError:
+    def frame_importance(predict_proba, x, class_id):
+        """Calculate frame drops for this isolated mock test if explain.py is absent."""
+        variants = np.repeat(np.asarray(x)[None, :, :], 30, axis=0)
+        variants[0, 0] = x[1]
+        variants[-1, -1] = x[-2]
+        for frame_id in range(1, 29):
+            variants[frame_id, frame_id] = (x[frame_id - 1] + x[frame_id + 1]) / 2
+        probabilities = predict_proba(np.concatenate((np.asarray(x)[None, :, :], variants)))
+        return probabilities[0, class_id] - probabilities[1:, class_id]
 
 
 def test_mock_data_has_expected_shapes_dtype_and_nonzero_landmarks():
@@ -36,7 +55,7 @@ def test_mock_generation_and_predictions_are_deterministic_and_input_sensitive()
     first = fake_predict_proba(X)
     np.testing.assert_array_equal(first, fake_predict_proba(X.copy()))
     changed = X.copy()
-    changed[:, :, 26] += 0.002
+    changed[:, 10, 89] += 0.002
     assert not np.allclose(first, fake_predict_proba(changed))
 
 
@@ -52,3 +71,41 @@ def test_mock_stress_transforms_preserve_shape_and_input():
         assert result.dtype == X.dtype
         np.testing.assert_array_equal(X, original)
         assert not np.shares_memory(result, X)
+
+
+def test_build_error_matrix_uses_both_ids_and_blanks_diagonal():
+    """A ranked error matrix is square and preserves every involved sign pair."""
+    counts = np.zeros((6, 6), dtype=int)
+    counts[0, 1] = 10
+    counts[1, 2] = 8
+    counts[2, 0] = 7
+    counts[4, 5] = 2
+    words = make_mock_words(6)
+    labels, matrix = build_error_matrix(counts, words, max_classes=15)
+    assert labels == ["sign_1", "sign_0", "sign_2", "sign_4", "sign_5"]
+    assert matrix.shape == (len(labels), len(labels))
+    assert np.all(np.isnan(np.diag(matrix)))
+    positions = {label: index for index, label in enumerate(labels)}
+    for true_id, pred_id in ((0, 1), (1, 2), (2, 0), (4, 5)):
+        assert matrix[positions[words[true_id]], positions[words[pred_id]]] > 0
+
+
+def test_build_error_matrix_returns_empty_square_for_no_errors():
+    """A diagonal-only confusion matrix has no error labels or cells."""
+    counts = np.diag([3, 4, 2])
+    labels, matrix = build_error_matrix(counts, make_mock_words(3))
+    assert labels == []
+    assert matrix.shape == (0, 0)
+
+
+def test_mock_frame_importance_peaks_in_frames_eight_through_twelve():
+    """The mock predictor's right-index class cue is concentrated at frame ten."""
+    X, y = make_mock_data(n=2, n_classes=5, seed=7)
+    sample = X[1]
+    class_id = int(y[1])
+    drops = frame_importance(
+        lambda batch: fake_predict_proba(batch, n_classes=5), sample, class_id
+    )
+    assert drops.shape == (30,)
+    assert 8 <= int(np.argmax(drops)) <= 12
+    assert float(np.max(drops)) > 0.01

@@ -14,6 +14,9 @@ _TEMPLATE = np.array([
     (0.17, -0.17, 0.060), (0.20, -0.27, 0.063), (0.22, -0.36, 0.066), (0.24, -0.43, 0.069),
 ], dtype=np.float32)
 _FINGERTIPS = (4, 8, 12, 16, 20)
+_INDEX_PULSE = {8: 0.25, 9: 0.6, 10: 1.0, 11: 0.6, 12: 0.25}
+_FRAME_WEIGHTS = np.array([0.1, 0.2, 0.4, 0.2, 0.1], dtype=np.float32)
+_INDEX_BASE = float(_TEMPLATE[5:9, 2].mean())
 
 
 def make_mock_data(n=60, n_classes=10, seed=0):
@@ -35,8 +38,11 @@ def make_mock_data(n=60, n_classes=10, seed=0):
                     hand[joint_id, 0] += 0.012 * wave * (tip_order + 1) / 5
                     hand[joint_id, 1] += 0.008 * np.cos(2 * np.pi * frame_id / 30 + phase + tip_order) 
                 if hand_id == 0:
-                    hand[8, 2] = 0.07 + 0.01 * class_id
                     hand[4, 2] = 0.08 if sample_id % 13 == 0 else 0.03
+                elif frame_id in _INDEX_PULSE:
+                    target_z = 0.06 + 0.01 * class_id
+                    base_z = _TEMPLATE[5:9, 2]
+                    hand[5:9, 2] = base_z + _INDEX_PULSE[frame_id] * (target_z - base_z)
                 start = hand_id * 63
                 sequence[frame_id, start:start + 63] = hand.reshape(-1)
         # Keep every stored coordinate nonzero, including nominal wrist coordinates.
@@ -50,6 +56,27 @@ def make_mock_words(n_classes):
     return [f"sign_{class_id}" for class_id in range(n_classes)]
 
 
+def build_error_matrix(counts, words, max_classes=15):
+    """Return ranked words and a square NaN-diagonal matrix of errors."""
+    counts = np.asarray(counts)
+    errors = counts.astype(float, copy=True)
+    np.fill_diagonal(errors, 0)
+    pairs = [
+        (int(true_id), int(pred_id), int(errors[true_id, pred_id]))
+        for true_id, pred_id in zip(*np.nonzero(errors))
+    ]
+    pairs.sort(key=lambda pair: (-pair[2], pair[0], pair[1]))
+    involved = {class_id for true_id, pred_id, _ in pairs[:15] for class_id in (true_id, pred_id)}
+    if not involved or max_classes <= 0:
+        return [], np.empty((0, 0), dtype=float)
+    error_mass = errors.sum(axis=0) + errors.sum(axis=1)
+    class_ids = sorted(involved, key=lambda class_id: (-int(error_mass[class_id]), class_id))[:max_classes]
+    labels = [words[class_id] for class_id in class_ids]
+    matrix = counts[np.ix_(class_ids, class_ids)].astype(float)
+    np.fill_diagonal(matrix, np.nan)
+    return labels, matrix
+
+
 def fake_predict_proba(X, n_classes=10):
     """Return deterministic softmax probabilities from encoded landmark poses."""
     values = np.asarray(X, dtype=np.float32)
@@ -57,8 +84,10 @@ def fake_predict_proba(X, n_classes=10):
         raise ValueError(f"X must have shape (N, 30, 126), got {values.shape}")
     if n_classes < 1:
         raise ValueError("n_classes must be positive")
-    class_signal = values[:, :, 26].mean(axis=1)
-    centers = 0.07 + 0.01 * np.arange(n_classes)
+    index_z_features = np.array([80, 83, 86, 89])
+    frame_signal = values[:, 8:13, index_z_features].mean(axis=2)
+    class_signal = frame_signal @ _FRAME_WEIGHTS
+    centers = _INDEX_BASE + 0.69 * ((0.06 + 0.01 * np.arange(n_classes)) - _INDEX_BASE)
     logits = -2.0 * ((class_signal[:, None] - centers[None, :]) / 0.01) ** 2
     predicted = logits.argmax(axis=1)
     error_marker = values[:, :, 14].mean(axis=1) > 0.055
