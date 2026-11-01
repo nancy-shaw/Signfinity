@@ -77,3 +77,57 @@ def top_confused_classes(counts, k=15):
     errors = counts.sum(axis=1) - np.diag(counts)
     ids = np.flatnonzero(errors > 0)
     return sorted(ids.tolist(), key=lambda class_id: (-int(errors[class_id]), class_id))[: max(0, k)]
+
+
+def frame_importance(predict_proba, x, class_id):
+    """Measure probability drops when each frame is replaced by its neighbors."""
+    x = np.asarray(x)
+    modified = np.repeat(x[np.newaxis, :, :], 30, axis=0)
+    modified[0, 0] = x[1]
+    modified[-1, -1] = x[-2]
+    for frame_id in range(1, 29):
+        modified[frame_id, frame_id] = (x[frame_id - 1] + x[frame_id + 1]) / 2
+    batch = np.concatenate((x[np.newaxis, :, :], modified), axis=0)
+    probabilities = np.asarray(predict_proba(batch))
+    return (probabilities[0, class_id] - probabilities[1:, class_id]).astype(float)
+
+
+def joint_group_importance(predict_proba, x, class_id):
+    """Measure probability drops after removing each hand finger's motion."""
+    x = np.asarray(x)
+    finger_joints = {
+        "thumb": range(1, 5),
+        "index": range(5, 9),
+        "middle": range(9, 13),
+        "ring": range(13, 17),
+        "pinky": range(17, 21),
+    }
+    groups = []
+    modified = []
+    for hand, offset in (("left", 0), ("right", 21)):
+        for finger, joints in finger_joints.items():
+            features = [feature for joint in joints for feature in range(3 * (joint + offset), 3 * (joint + offset) + 3)]
+            groups.append((hand, finger, features))
+            changed = x.copy()
+            changed[:, features] = x[:, features].mean(axis=0)
+            modified.append(changed)
+    batch = np.concatenate((x[np.newaxis, :, :], np.stack(modified)), axis=0)
+    probabilities = np.asarray(predict_proba(batch))
+    return {
+        (hand, finger): float(probabilities[0, class_id] - probabilities[index + 1, class_id])
+        for index, (hand, finger, _) in enumerate(groups)
+    }
+
+
+def wrong_prediction_report(predict_proba, x, true_id):
+    """Report the top prediction and frame importance for predicted and true classes."""
+    x = np.asarray(x)
+    original = np.asarray(predict_proba(x[np.newaxis, :, :]))[0]
+    pred_id = int(np.argmax(original))
+    return {
+        "pred_id": pred_id,
+        "p_true": float(original[true_id]),
+        "p_pred": float(original[pred_id]),
+        "frame_importance_for_pred": frame_importance(predict_proba, x, pred_id),
+        "frame_importance_for_true": frame_importance(predict_proba, x, true_id),
+    }

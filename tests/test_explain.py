@@ -2,7 +2,15 @@
 
 import numpy as np
 
-from explain import confusion_counts, new_errors, top_confused_classes, top_confused_pairs
+from explain import (
+    confusion_counts,
+    frame_importance,
+    joint_group_importance,
+    new_errors,
+    top_confused_classes,
+    top_confused_pairs,
+    wrong_prediction_report,
+)
 
 
 def test_confusion_counts_uses_true_classes_as_rows_and_fixed_shape():
@@ -78,3 +86,72 @@ def test_new_errors_empty_input_returns_empty_result():
         "n_newly_right": 0,
         "top_transitions": [],
     }
+
+
+def test_frame_importance_peaks_at_frame_ten_and_preserves_input():
+    """Batch one original with 30 frame edits and identify the influential frame."""
+    calls = []
+
+    def predict_proba(batch):
+        calls.append(batch.copy())
+        probability = 1 / (1 + np.exp(-batch[:, 10].mean(axis=1)))
+        result = np.zeros((len(batch), 129), dtype=float)
+        result[:, 3] = probability
+        result[:, 2] = 1 - probability
+        return result
+
+    x = np.zeros((30, 126), dtype=float)
+    x[10] = 1
+    original = x.copy()
+    importance = frame_importance(predict_proba, x, 3)
+    assert importance.shape == (30,)
+    assert int(np.argmax(importance)) == 10
+    assert len(calls) == 1
+    assert calls[0].shape == (31, 30, 126)
+    np.testing.assert_array_equal(x, original)
+
+
+def test_joint_group_importance_peaks_at_right_index_and_preserves_input():
+    """Batch one original with ten edits and isolate right index motion."""
+    calls = []
+
+    def predict_proba(batch):
+        calls.append(batch.copy())
+        group = batch[:, :, 78:90]
+        motion = group.std(axis=1).mean(axis=1)
+        probability = 1 / (1 + np.exp(-motion))
+        result = np.zeros((len(batch), 129), dtype=float)
+        result[:, 3] = probability
+        result[:, 2] = 1 - probability
+        return result
+
+    x = np.zeros((30, 126), dtype=float)
+    x[:, 78:90] = np.linspace(-1, 1, 30)[:, None]
+    original = x.copy()
+    importance = joint_group_importance(predict_proba, x, 3)
+    assert len(importance) == 10
+    assert max(importance, key=importance.get) == ("right", "index")
+    assert importance[("right", "index")] > 0
+    assert len(calls) == 1
+    assert calls[0].shape == (11, 30, 126)
+    np.testing.assert_array_equal(x, original)
+
+
+def test_wrong_prediction_report_returns_probabilities_and_frame_shapes():
+    """Report the argmax, class probabilities, and both frame-importance arrays."""
+    def predict_proba(batch):
+        probability = 1 / (1 + np.exp(-batch[:, 10].mean(axis=1)))
+        result = np.zeros((len(batch), 129), dtype=float)
+        result[:, 3] = probability
+        result[:, 2] = 1 - probability
+        return result
+
+    x = np.zeros((30, 126), dtype=float)
+    x[10] = 1
+    original = x.copy()
+    report = wrong_prediction_report(predict_proba, x, true_id=2)
+    assert report["pred_id"] == 3
+    assert report["p_pred"] > report["p_true"]
+    assert report["frame_importance_for_pred"].shape == (30,)
+    assert report["frame_importance_for_true"].shape == (30,)
+    np.testing.assert_array_equal(x, original)
