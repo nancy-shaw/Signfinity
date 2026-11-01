@@ -1,0 +1,10 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+local_assets/
+*.pth
+*.npy
+*.npz
+!examples/sample.npz
+.DS_Store

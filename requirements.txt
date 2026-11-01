@@ -1,0 +1,9 @@
+numpy
+pandas
+scipy
+scikit-learn
+streamlit
+plotly
+pytest
+python-dotenv
+cerebras-cloud-sdk
