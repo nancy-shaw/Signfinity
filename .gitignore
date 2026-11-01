@@ -8,3 +8,7 @@ local_assets/
 *.npz
 !examples/sample.npz
 .DS_Store
+X_test.npy
+y_test.npy
+.pytest_cache/
+__pycache__/
