@@ -7,3 +7,4 @@ plotly
 pytest
 python-dotenv
 torch
+flask
