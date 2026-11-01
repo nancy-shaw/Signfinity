@@ -60,7 +60,8 @@ export_card.py, tests/, examples/, docs/, requirements.txt
 
 ## Files and owners
 
-stress.py, evaluate.py, adapters.py, model_def.py, summary.py, export_card.py, results_io.py, pages/1_Stress_Tests.py (A)
+app.py (B). stress.py and evaluate.py (A1). adapters.py, model_def.py,
+summary.py, export_card.py (A2). Do not edit files you were not asked to touch.
 
 ## Commands
 
