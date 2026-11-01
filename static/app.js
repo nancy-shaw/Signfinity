@@ -5,7 +5,13 @@ const loading = document.querySelector("#loading");
 const errorPanel = document.querySelector("#error-panel");
 const results = document.querySelector("#results");
 const downloadButton = document.querySelector("#download-card");
+const advisorButton = document.querySelector("#advisor-button");
+const advisorLoading = document.querySelector("#advisor-loading");
+const advisorError = document.querySelector("#advisor-error");
+const advisorResults = document.querySelector("#advisor-results");
+const modelDescription = document.querySelector("#model-description");
 let chart;
+let reportId = null;
 
 function disableDownloadButton() {
   downloadButton.removeAttribute("href");
@@ -117,6 +123,10 @@ function renderReport(data) {
   renderCards(data);
   renderPerturbations(data);
   renderClasses(data);
+  reportId = data.report_id;
+  advisorButton.disabled = !reportId;
+  advisorResults.replaceChildren();
+  advisorError.hidden = true;
   if (data.report_id) {
     downloadButton.href = `/card/${encodeURIComponent(data.report_id)}`;
     downloadButton.classList.remove("disabled");
@@ -129,11 +139,62 @@ function renderReport(data) {
   results.hidden = false;
 }
 
+function renderSuggestions(data) {
+  advisorResults.replaceChildren();
+  advisorResults.append(element("h3", data.summary));
+  for (const suggestion of data.suggestions) {
+    const article = document.createElement("article");
+    article.className = "suggestion-card";
+    const priority = element("span", suggestion.priority, `priority-badge priority-${suggestion.priority}`);
+    article.append(priority, element("h4", suggestion.title));
+    article.append(element("p", `Evidence: ${suggestion.evidence}`));
+    article.append(element("p", `What to change: ${suggestion.what_to_change}`));
+    article.append(element("p", `Expected effect: ${suggestion.expected_effect}`));
+    advisorResults.append(article);
+  }
+  const caveatsTitle = element("h4", "Caveats");
+  const caveats = document.createElement("ul");
+  for (const caveat of data.caveats) caveats.append(element("li", caveat));
+  advisorResults.append(caveatsTitle, caveats);
+}
+
+advisorButton.addEventListener("click", async () => {
+  if (!reportId) return;
+  advisorButton.disabled = true;
+  advisorLoading.hidden = false;
+  advisorError.hidden = true;
+  advisorResults.replaceChildren();
+  try {
+    const response = await fetch("/advise", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        report_id: reportId,
+        model_description: modelDescription.value.slice(0, 3000),
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok || data.error) throw new Error(data.error || "Advisor request failed.");
+    renderSuggestions(data);
+  } catch (error) {
+    advisorError.textContent = error.message || "Advisor request failed.";
+    advisorError.hidden = false;
+  } finally {
+    advisorLoading.hidden = true;
+    advisorButton.disabled = !reportId;
+  }
+});
+
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   errorPanel.hidden = true;
   results.hidden = true;
   disableDownloadButton();
+  reportId = null;
+  advisorButton.disabled = true;
+  advisorLoading.hidden = true;
+  advisorError.hidden = true;
+  advisorResults.replaceChildren();
   loading.hidden = false;
   const submit = form.querySelector("button[type=submit]");
   submit.disabled = true;
