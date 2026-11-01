@@ -29,7 +29,7 @@ results with counts. All numbers come from plain code.
   torch.no_grad, CPU, batches of 64, argmax of the outputs.
 - No extra preprocessing in predict(). The data is already normalized.
 - The model is used only through predict(X), which returns class ids, shape (N,).
-- Known baseline on the full test set: 86.95% (333 of 383). The adapter must
+- Known baseline on the full test set: 85.64% (328 of 383). The adapter must
   reproduce this exactly. If it does not, stop and find the cause first.
 
 ## The six tests (stress.py)
