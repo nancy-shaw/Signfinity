@@ -28,6 +28,7 @@ def make_mock_data(n=60, n_classes=10, seed=0):
     labels = np.arange(n, dtype=int) % n_classes
     X = np.empty((n, 30, 126), dtype=np.float32)
     for sample_id, class_id in enumerate(labels):
+        model_class_id = (class_id + 1) % n_classes if sample_id % 13 == 0 else class_id
         phase = rng.uniform(0, 2 * np.pi)
         sequence = np.empty((30, 126), dtype=np.float32)
         for frame_id in range(30):
@@ -38,10 +39,8 @@ def make_mock_data(n=60, n_classes=10, seed=0):
                 for tip_order, joint_id in enumerate(_FINGERTIPS):
                     hand[joint_id, 0] += 0.012 * wave * (tip_order + 1) / 5
                     hand[joint_id, 1] += 0.008 * np.cos(2 * np.pi * frame_id / 30 + phase + tip_order) 
-                if hand_id == 0:
-                    hand[4, 2] = 0.08 if sample_id % 13 == 0 else 0.03
-                elif frame_id in _INDEX_PULSE:
-                    target_z = 0.06 + 0.01 * class_id
+                if hand_id == 1 and frame_id in _INDEX_PULSE:
+                    target_z = 0.06 + 0.01 * model_class_id
                     base_z = _TEMPLATE[5:9, 2]
                     hand[5:9, 2] = base_z + _INDEX_PULSE[frame_id] * (target_z - base_z)
                 start = hand_id * 63
@@ -167,9 +166,6 @@ def fake_predict_proba(X, n_classes=10):
     centers = _INDEX_BASE + 0.69 * ((0.06 + 0.01 * np.arange(n_classes)) - _INDEX_BASE)
     temperature = 2.0
     logits = -temperature * ((class_signal[:, None] - centers[None, :]) / 0.01) ** 2
-    error_marker = values[:, :, 14].mean(axis=1) > 0.055
-    for sample_id in np.flatnonzero(error_marker):
-        logits[sample_id] = np.roll(logits[sample_id], 1)
     logits -= logits.max(axis=1, keepdims=True)
     exp_logits = np.exp(logits)
     return exp_logits / exp_logits.sum(axis=1, keepdims=True)
