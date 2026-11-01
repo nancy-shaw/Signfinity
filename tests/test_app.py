@@ -74,8 +74,27 @@ def test_analyze_uploads_and_cleans_temporary_files(tmp_path, monkeypatch):
     assert result["baseline"]["accuracy"] == 1.0
     assert result["baseline_ok"] is True
     assert set(result["perturbations"]) == set(report.TESTS)
+    assert result["report_id"]
     assert len(captured_paths) == 3
     assert not any(os.path.exists(path) for path in captured_paths)
+
+    card_response = client.get(f"/card/{result['report_id']}")
+    assert card_response.status_code == 200
+    assert card_response.headers["Content-Disposition"].endswith(
+        'filename=robustness_card.html'
+    )
+    assert f"{result['robustness_score'] * 100:.2f}%".encode() in card_response.data
+    assert b"@media print" in card_response.data
+
+
+def test_unknown_card_id_returns_404():
+    """Unknown in-memory report ids return a clear not-found response."""
+    client = flask_app.app.test_client()
+
+    response = client.get("/card/not-a-stored-report")
+
+    assert response.status_code == 404
+    assert b"Robustness card not found" in response.data
 
 
 def test_analyze_rejects_unapproved_extensions():

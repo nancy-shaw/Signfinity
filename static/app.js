@@ -4,7 +4,15 @@ const form = document.querySelector("#analysis-form");
 const loading = document.querySelector("#loading");
 const errorPanel = document.querySelector("#error-panel");
 const results = document.querySelector("#results");
+const downloadButton = document.querySelector("#download-card");
 let chart;
+
+function disableDownloadButton() {
+  downloadButton.removeAttribute("href");
+  downloadButton.classList.add("disabled");
+  downloadButton.setAttribute("aria-disabled", "true");
+  downloadButton.setAttribute("tabindex", "-1");
+}
 
 function percent(value) {
   return `${(value * 100).toFixed(2)}%`;
@@ -109,6 +117,14 @@ function renderReport(data) {
   renderCards(data);
   renderPerturbations(data);
   renderClasses(data);
+  if (data.report_id) {
+    downloadButton.href = `/card/${encodeURIComponent(data.report_id)}`;
+    downloadButton.classList.remove("disabled");
+    downloadButton.removeAttribute("aria-disabled");
+    downloadButton.removeAttribute("tabindex");
+  } else {
+    disableDownloadButton();
+  }
   errorPanel.hidden = true;
   results.hidden = false;
 }
@@ -117,6 +133,7 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
   errorPanel.hidden = true;
   results.hidden = true;
+  disableDownloadButton();
   loading.hidden = false;
   const submit = form.querySelector("button[type=submit]");
   submit.disabled = true;
