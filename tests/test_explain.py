@@ -1,0 +1,80 @@
+"""Unit tests for confusion analysis helpers."""
+
+import numpy as np
+
+from explain import confusion_counts, new_errors, top_confused_classes, top_confused_pairs
+
+
+def test_confusion_counts_uses_true_classes_as_rows_and_fixed_shape():
+    """Counts predictions in true-class rows, including absent classes."""
+    result = confusion_counts([0, 0, 1, 2], [0, 1, 1, 0], n_classes=4)
+    expected = np.array(
+        [[1, 1, 0, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]],
+        dtype=int,
+    )
+    np.testing.assert_array_equal(result, expected)
+    assert result.dtype.kind in "iu"
+
+
+def test_confusion_counts_empty_inputs_return_zero_matrix():
+    """Empty label arrays produce the requested all-zero matrix."""
+    np.testing.assert_array_equal(
+        confusion_counts([], [], n_classes=3), np.zeros((3, 3), dtype=int)
+    )
+
+
+def test_top_confused_pairs_excludes_diagonal_and_sorts_ties_by_ids():
+    """Off-diagonal pairs sort by count descending, then class ids."""
+    pairs = top_confused_pairs(
+        [0, 0, 1, 1, 2], [1, 1, 0, 2, 2], words=["A", "B", "C"], k=3
+    )
+    assert pairs == [
+        {"true_id": 0, "pred_id": 1, "true_word": "A", "pred_word": "B", "count": 2},
+        {"true_id": 1, "pred_id": 0, "true_word": "B", "pred_word": "A", "count": 1},
+        {"true_id": 1, "pred_id": 2, "true_word": "B", "pred_word": "C", "count": 1},
+    ]
+
+
+def test_new_errors_counts_regressions_improvements_and_transitions():
+    """Compare correct-to-wrong and wrong-to-correct prediction changes."""
+    result = new_errors(
+        [0, 1, 2, 2, 1],
+        [0, 0, 2, 1, 1],
+        [1, 1, 0, 2, 2],
+    )
+    assert result == {
+        "n_newly_wrong": 3,
+        "n_newly_right": 2,
+        "top_transitions": [
+            {"true_id": 0, "pred_id": 1, "count": 1},
+            {"true_id": 1, "pred_id": 2, "count": 1},
+            {"true_id": 2, "pred_id": 0, "count": 1},
+        ],
+    }
+
+
+def test_top_confused_classes_ranks_error_counts_and_returns_none_when_clean():
+    """Rank classes by their off-diagonal counts and skip classes without errors."""
+    counts = np.array([[2, 3, 0], [1, 1, 2], [0, 0, 4]])
+    assert top_confused_classes(counts, k=2) == [0, 1]
+    assert top_confused_classes(np.diag([3, 2, 1])) == []
+
+
+def test_all_correct_predictions_have_no_confusions_or_new_errors():
+    """Clean predictions yield empty confusion rankings and zero regressions."""
+    labels = [0, 1, 2]
+    assert top_confused_pairs(labels, labels) == []
+    assert new_errors(labels, labels, labels) == {
+        "n_newly_wrong": 0,
+        "n_newly_right": 0,
+        "top_transitions": [],
+    }
+
+
+def test_new_errors_empty_input_returns_empty_result():
+    """Empty prediction arrays yield zero changes and no transitions."""
+    assert new_errors([], [], []) == {
+        "n_newly_wrong": 0,
+        "n_newly_right": 0,
+        "top_transitions": [],
+    }
