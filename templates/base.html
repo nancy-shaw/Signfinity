@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Sign Model Report Card{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="site-shell">
+    <nav class="site-nav" aria-label="Main navigation">
+      <a class="brand" href="{{ url_for('index') }}"><span class="brand-mark">S</span><span>signfinity</span></a>
+      <div class="nav-links">
+        <a class="{% if request.path == '/' %}active{% endif %}" href="{{ url_for('index') }}">Home</a>
+        <a class="{% if request.path == '/robustness' %}active{% endif %}" href="{{ url_for('robustness') }}">Robustness Test</a>
+        <a class="{% if request.path == '/advisor' %}active{% endif %}" href="{{ url_for('advisor_page') }}">AI Advisor</a>
+        <a class="{% if request.path == '/landmarks' %}active{% endif %}" href="{{ url_for('landmarks') }}">Landmark Graph</a>
+      </div>
+    </nav>
+    {% block content %}{% endblock %}
+    <footer class="site-footer">
+      <a class="brand footer-brand" href="{{ url_for('index') }}"><span class="brand-mark">S</span><span>signfinity</span></a>
+      <p>Landmark model evaluation, made easier to inspect.</p>
+    </footer>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

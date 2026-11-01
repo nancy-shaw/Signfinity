@@ -1,92 +1,28 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign Model Report Card</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script defer src="{{ url_for('static', filename='app.js') }}"></script>
-</head>
-<body>
-  <main class="page-shell">
-    <header class="page-header">
-      <p class="eyebrow">Model evaluation</p>
-      <h1>Sign Model Report Card</h1>
-      <p class="intro">See how your sign classifier holds up when its landmark inputs change.</p>
-    </header>
-
-    <section class="panel upload-panel" aria-labelledby="upload-title">
-      <h2 id="upload-title">Run an analysis</h2>
-      <form id="analysis-form">
-        <label>Model file <span>.pt, .pth, or .onnx</span>
-          <input name="model" type="file" accept=".pt,.pth,.onnx" required>
-        </label>
-        <div class="file-grid">
-          <label>X_test features <span>.npy</span>
-            <input name="X_test" type="file" accept=".npy" required>
-          </label>
-          <label>y_test labels <span>.npy</span>
-            <input name="y_test" type="file" accept=".npy" required>
-          </label>
-        </div>
-        <label class="claimed-field">Claimed accuracy <span>optional, as a decimal</span>
-          <input name="claimed_accuracy" type="number" min="0" max="1" step="any" placeholder="Enter decimal accuracy">
-        </label>
-        <button class="primary-button" type="submit">Analyze model</button>
-      </form>
-      <details class="help-box">
-        <summary>How to export your model</summary>
-        <p>Upload a self-contained TorchScript model (.pt) or a PyTorch state dictionary (.pth). For a state dictionary, the model architecture must be available to the report service. The upload accepts .onnx files, but the current model adapter cannot load that format yet. Keep the model and both NumPy test files from the same evaluation setup.</p>
-      </details>
-    </section>
-
-    <p id="loading" class="loading" role="status" hidden>Analyzing the model…</p>
-    <section id="error-panel" class="notice error-notice" role="alert" hidden></section>
-
-    <section id="results" hidden aria-live="polite">
-      <div id="baseline-banner" class="notice" role="status"></div>
-      <div class="summary-grid" id="summary-cards"></div>
-
-      <section class="panel" aria-labelledby="perturbation-title">
-        <div class="section-heading">
-          <div><p class="eyebrow">Stress results</p><h2 id="perturbation-title">Accuracy by perturbation</h2></div>
-          <p>Sorted from the largest accuracy drop to the smallest.</p>
-        </div>
-        <div class="chart-wrap"><canvas id="perturbation-chart" aria-label="Accuracy by perturbation" role="img"></canvas></div>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th scope="col">Perturbation</th><th scope="col">Accuracy</th><th scope="col">Correct</th><th scope="col">Drop vs baseline</th></tr></thead>
-            <tbody id="perturbation-rows"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="panel" aria-labelledby="class-title">
-        <div class="section-heading">
-          <div><p class="eyebrow">Per-sign detail</p><h2 id="class-title">10 worst classes</h2></div>
-        </div>
-        <p class="small-sample-note">Per-class numbers use very small samples (about 3 per class), so treat them as directional.</p>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th scope="col">Class</th><th scope="col">n</th><th scope="col">Clean</th><th scope="col">Worst perturbation</th><th scope="col">Worst accuracy</th></tr></thead>
-            <tbody id="class-rows"></tbody>
-          </table>
-        </div>
-      </section>
-      <section class="panel" aria-labelledby="advisor-title">
-        <div class="section-heading">
-          <div><p class="eyebrow">Optional AI review</p><h2 id="advisor-title">Improvement Advisor</h2></div>
-        </div>
-        <label for="model-description">Describe your model and hyperparameters</label>
-        <textarea id="model-description" maxlength="3000" rows="4" placeholder="Describe the architecture, training setup, or constraints for the reviewer."></textarea>
-        <button id="advisor-button" class="primary-button" type="button" disabled>Get improvement suggestions</button>
-        <p id="advisor-loading" class="loading" role="status" hidden>Reviewing the report…</p>
-        <div id="advisor-error" class="notice error-notice" role="alert" hidden></div>
-        <div id="advisor-results" class="advisor-results" aria-live="polite"></div>
-      </section>
-      <a id="download-card" class="primary-button disabled" href="#" role="button" aria-disabled="true" tabindex="-1">Download Robustness Card</a>
-    </section>
-  </main>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Robustness Test — Sign Model Report Card{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script>{% endblock %}
+{% block content %}
+<main class="page-shell analysis-page">
+  <header class="page-header"><p class="eyebrow">MODEL EVALUATION / 01</p><h1>Robustness <span class="gradient-text">Test</span></h1><p class="intro">See how your sign classifier holds up when its landmark inputs change.</p></header>
+  <section class="panel upload-panel" aria-labelledby="upload-title">
+    <h2 id="upload-title">Run an analysis</h2>
+    <form id="analysis-form">
+      <label>Model file <span>.pt, .pth, or .onnx</span><input name="model" type="file" accept=".pt,.pth,.onnx" required></label>
+      <div class="file-grid"><label>X_test features <span>.npy</span><input name="X_test" type="file" accept=".npy" required></label><label>y_test labels <span>.npy</span><input name="y_test" type="file" accept=".npy" required></label></div>
+      <label class="claimed-field">Claimed accuracy <span>optional, as a decimal</span><input name="claimed_accuracy" type="number" min="0" max="1" step="any" placeholder="Enter decimal accuracy"></label>
+      <button class="button button-primary" type="submit">Analyze model <span aria-hidden="true">↗</span></button>
+    </form>
+    <details class="help-box"><summary>How to export your model</summary><p>Upload a self-contained TorchScript model (.pt) or a PyTorch state dictionary (.pth). For a state dictionary, the model architecture must be available to the report service. The upload accepts .onnx files, but the current model adapter cannot load that format yet. Keep the model and both NumPy test files from the same evaluation setup.</p></details>
+  </section>
+  <p id="loading" class="loading" role="status" hidden>Analyzing the model…</p>
+  <section id="error-panel" class="notice error-notice" role="alert" hidden></section>
+  <section id="results" hidden aria-live="polite">
+    <div id="baseline-banner" class="notice" role="status"></div><div class="summary-grid" id="summary-cards"></div>
+    <section class="panel" aria-labelledby="perturbation-title"><div class="section-heading"><div><p class="eyebrow">STRESS RESULTS</p><h2 id="perturbation-title">Accuracy by perturbation</h2></div><p>Sorted from the largest accuracy drop to the smallest.</p></div><div class="chart-wrap"><canvas id="perturbation-chart" aria-label="Accuracy by perturbation" role="img"></canvas></div><div class="table-scroll"><table><thead><tr><th scope="col">Perturbation</th><th scope="col">Accuracy</th><th scope="col">Correct</th><th scope="col">Drop vs baseline</th></tr></thead><tbody id="perturbation-rows"></tbody></table></div></section>
+    <section class="panel" aria-labelledby="class-title"><div class="section-heading"><div><p class="eyebrow">PER-SIGN DETAIL</p><h2 id="class-title">10 worst classes</h2></div></div><p class="small-sample-note">Per-class numbers use very small samples (about 3 per class), so treat them as directional.</p><div class="table-scroll"><table><thead><tr><th scope="col">Class</th><th scope="col">n</th><th scope="col">Clean</th><th scope="col">Worst perturbation</th><th scope="col">Worst accuracy</th></tr></thead><tbody id="class-rows"></tbody></table></div></section>
+    <section class="panel" aria-labelledby="advisor-title"><div class="section-heading"><div><p class="eyebrow">OPTIONAL AI REVIEW</p><h2 id="advisor-title">Improvement Advisor</h2></div></div><label for="model-description">Describe your model and hyperparameters</label><textarea id="model-description" maxlength="3000" rows="4" placeholder="Describe the architecture, training setup, or constraints for the reviewer."></textarea><button id="advisor-button" class="button button-primary" type="button" disabled>Get improvement suggestions</button><p id="advisor-loading" class="loading" role="status" hidden>Reviewing the report…</p><div id="advisor-error" class="notice error-notice" role="alert" hidden></div><div id="advisor-results" class="advisor-results" aria-live="polite"></div></section>
+    <a id="download-card" class="button button-primary disabled" href="#" role="button" aria-disabled="true" tabindex="-1">Download Robustness Card</a>
+  </section>
+</main>
+{% endblock %}
+{% block scripts %}<script defer src="{{ url_for('static', filename='app.js') }}"></script>{% endblock %}

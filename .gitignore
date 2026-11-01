@@ -9,3 +9,4 @@ local_assets/
 !examples/sample.npz
 .DS_Store
 .pytest_tmp/
+.pytest_tmp_run/

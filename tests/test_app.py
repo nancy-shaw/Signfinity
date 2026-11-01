@@ -26,11 +26,18 @@ def npy_upload(values):
     return content
 
 
-def test_index_page_renders_upload_form():
-    """The root route serves the report upload form."""
+def test_home_and_feature_pages_render():
+    """Home and all three feature pages render successfully."""
     client = flask_app.app.test_client()
 
-    response = client.get("/")
+    assert client.get("/").status_code == 200
+    for route in ("/robustness", "/advisor", "/landmarks"):
+        assert client.get(route).status_code == 200
+
+
+def test_robustness_page_renders_upload_form():
+    """The robustness page serves the existing report upload form."""
+    response = flask_app.app.test_client().get("/robustness")
 
     assert response.status_code == 200
     assert b"Sign Model Report Card" in response.data
