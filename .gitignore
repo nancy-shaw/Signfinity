@@ -7,4 +7,5 @@ local_assets/
 *.npy
 *.npz
 !examples/sample.npz
-.DS_Store.pytest_tmp/
+.DS_Store
+.pytest_tmp/
