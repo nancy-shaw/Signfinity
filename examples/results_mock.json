@@ -1,0 +1,28 @@
+{
+  "baseline_acc": 0.87,
+  "baseline_ci_low": 0.836,
+  "baseline_ci_high": 0.904,
+  "tests": {
+    "Mirror (left hand)": 0.23,
+    "Slower (0.7x)": 0.78,
+    "Faster (1.3x)": 0.75,
+    "Noise": 0.86,
+    "Scale jitter": 0.82,
+    "Missing frames": 0.74
+  },
+  "score": 80,
+  "per_class": {
+    "0": {"word": "hello", "n": 3, "correct_before": 3, "correct_after": {"Mirror (left hand)": 1, "Slower (0.7x)": 2, "Faster (1.3x)": 2, "Noise": 3, "Scale jitter": 3, "Missing frames": 2}},
+    "1": {"word": "thanks", "n": 3, "correct_before": 3, "correct_after": {"Mirror (left hand)": 0, "Slower (0.7x)": 3, "Faster (1.3x)": 2, "Noise": 3, "Scale jitter": 2, "Missing frames": 2}},
+    "2": {"word": "please", "n": 3, "correct_before": 2, "correct_after": {"Mirror (left hand)": 1, "Slower (0.7x)": 2, "Faster (1.3x)": 2, "Noise": 2, "Scale jitter": 2, "Missing frames": 2}},
+    "3": {"word": "yes", "n": 3, "correct_before": 3, "correct_after": {"Mirror (left hand)": 1, "Slower (0.7x)": 2, "Faster (1.3x)": 2, "Noise": 3, "Scale jitter": 3, "Missing frames": 2}},
+    "4": {"word": "no", "n": 3, "correct_before": 3, "correct_after": {"Mirror (left hand)": 0, "Slower (0.7x)": 3, "Faster (1.3x)": 2, "Noise": 3, "Scale jitter": 2, "Missing frames": 2}},
+    "5": {"word": "water", "n": 3, "correct_before": 2, "correct_after": {"Mirror (left hand)": 1, "Slower (0.7x)": 2, "Faster (1.3x)": 2, "Noise": 2, "Scale jitter": 2, "Missing frames": 2}},
+    "6": {"word": "food", "n": 3, "correct_before": 3, "correct_after": {"Mirror (left hand)": 1, "Slower (0.7x)": 2, "Faster (1.3x)": 2, "Noise": 3, "Scale jitter": 3, "Missing frames": 2}},
+    "7": {"word": "help", "n": 3, "correct_before": 2, "correct_after": {"Mirror (left hand)": 0, "Slower (0.7x)": 2, "Faster (1.3x)": 2, "Noise": 3, "Scale jitter": 2, "Missing frames": 2}},
+    "8": {"word": "friend", "n": 3, "correct_before": 3, "correct_after": {"Mirror (left hand)": 1, "Slower (0.7x)": 2, "Faster (1.3x)": 2, "Noise": 3, "Scale jitter": 3, "Missing frames": 2}},
+    "9": {"word": "love", "n": 3, "correct_before": 3, "correct_after": {"Mirror (left hand)": 1, "Slower (0.7x)": 2, "Faster (1.3x)": 2, "Noise": 3, "Scale jitter": 2, "Missing frames": 2}}
+  },
+  "samples_per_class_train": {"0": 24, "1": 27, "2": 23, "3": 25, "4": 22, "5": 26, "6": 24, "7": 21, "8": 28, "9": 23},
+  "summary": "Baseline accuracy is 87%. Mirror changes reduce accuracy substantially. Noise has the smallest effect. The model retains most of its accuracy under the other tests."
+}

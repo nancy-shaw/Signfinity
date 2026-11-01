@@ -6,4 +6,4 @@ streamlit
 plotly
 pytest
 python-dotenv
-cerebras-cloud-sdk
+torch
